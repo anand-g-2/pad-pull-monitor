@@ -202,7 +202,7 @@ Redo the calibration whenever the camera is moved, bumped or replaced. You can c
 
 - The top row shows what **Start** will use: **camera**, **ROI** and **model**. A red item means it is missing; use the link to fix it in Calibration.
 - Press **Start**. The first start after booting can show "Starting…" for 1–2 minutes while the AI libraries load.
-- The stream shows green pad boxes while pads arrive, red pad boxes during the post-pull check, and an overlay with the state and counts.
+- The stream shows green pad boxes while pads arrive, red pad boxes during the post-pull check, and an orange box around the puller, inside the yellow ROI outline. The state and counts are in the panel beside the video.
 - The right-hand panel shows the current state, pads in the ROI, processing fps, this run's counts and an event log.
 - **Check the fps figure.** If the camera delivers less than about 8 fps, a warning appears; see [Troubleshooting](#12-troubleshooting).
 - If the camera is unplugged, the app shows **Reconnecting…** and retries for 30 s.

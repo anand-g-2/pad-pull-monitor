@@ -260,7 +260,9 @@ class PadPullMonitor:
         return [f"{t:7.2f}s  batch {b.no}: {b.result}  pads_in={b.pads_in} pulled={pulled} "
                 f"leftover={b.leftover}  {b.reason}"]
 
-    def draw(self, frame):
+    def draw(self, frame, hud=True):
+        """ROI outline + detection boxes. hud=False leaves out the stats box and NC
+        banner (the web app shows those in its side panel instead)."""
         small = cv2.resize(frame, (WORK_W, WORK_H), interpolation=cv2.INTER_AREA)
         cnts, _ = cv2.findContours(self.roi.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         cv2.drawContours(small, cnts, -1, (0, 255, 255), 1)
@@ -272,6 +274,8 @@ class PadPullMonitor:
             col = (0, 0, 255) if self.state == self.VERIFY else (0, 255, 0)
             for x0, y0, x1, y1 in self.d.pads:
                 cv2.rectangle(small, (int(x0), int(y0)), (int(x1), int(y1)), col, 2)
+        if not hud:
+            return small
         lines = [f"State: {self.state}",
                  f"Pads in ROI: {len(self.d.pads)}   puller: {self.d.puller_score:.2f}",
                  f"Batches: {len(self.batches)}   Pads: {self.total_pads}   Pulled: {self.total_pulled}",

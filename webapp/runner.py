@@ -228,7 +228,7 @@ class MonitorRunner:
 
                 n_before = len(mon.batches)
                 events = mon.update(frame)
-                vis = mon.draw(frame)
+                vis = mon.draw(frame, hud=False)   # stats live in the side panel
                 ok_jpg, jpg = cv2.imencode(".jpg", vis, [cv2.IMWRITE_JPEG_QUALITY, JPEG_QUALITY])
                 if ok_jpg:
                     with self._lock:
