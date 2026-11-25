@@ -1,0 +1,20 @@
+# Disc Pad Pull Monitor - Python packages
+# Tested on Windows 11, Python 3.11.9, NVIDIA GTX 1650 (driver 610.62).
+#
+# PyTorch with CUDA is NOT installed from this file, because the default PyPI
+# wheel is CPU-only. Install it first (see README, step 3):
+#   pip install torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cu124
+# then:
+#   pip install -r requirements.txt
+
+ultralytics==8.4.84        # YOLO training / inference
+opencv-python==4.10.0.84   # video + camera I/O
+numpy==1.26.4             # keep <2: newer onnx pulls numpy 2, which breaks scipy/other packages
+flask==3.1.3               # web app
+
+# --- TensorRT export (optional, but recommended on the line PC) -------------
+tensorrt-cu12>=10.3,<10.14
+onnx>=1.12,<1.19
+onnxslim>=0.1.59
+ml_dtypes>=0.5,<0.6       # ml_dtypes 0.6+ needs numpy 2
+onnxruntime-gpu==1.32.0     # used by the ONNX step of the export

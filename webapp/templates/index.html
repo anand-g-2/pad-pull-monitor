@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Iverto Vision Platform — Disc Pad Pull Monitor</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='pad.css') }}">
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="{{ url_for('static', filename='logo.png') }}" alt="iverto.ai" class="brand-logo">
+      </div>
+      <div class="nav-section-label">MONITORING</div>
+      <nav class="nav">
+        <button class="nav-item active" type="button" data-page="overview">
+          <svg viewBox="0 0 24 24" class="nav-icon"><path d="M3 11.5 12 4l9 7.5" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 10v9a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1v-9" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span>Overview</span>
+        </button>
+        <button class="nav-item" type="button" data-page="live">
+          <svg viewBox="0 0 24 24" class="nav-icon"><rect x="2" y="6" width="14" height="12" rx="2" stroke="currentColor" stroke-width="2" fill="none"/><path d="M16 11l6-3.5v9L16 13" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round"/></svg>
+          <span>Live Monitoring</span>
+          <span class="nav-live-dot" data-role="nav-live-dot" hidden></span>
+        </button>
+        <button class="nav-item" type="button" data-page="analytics">
+          <svg viewBox="0 0 24 24" class="nav-icon"><path d="M4 20V10M11 20V4M18 20v-7" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+          <span>Analytics</span>
+        </button>
+      </nav>
+      <div class="nav-section-label">SETUP</div>
+      <nav class="nav">
+        <button class="nav-item" type="button" data-page="calibration">
+          <svg viewBox="0 0 24 24" class="nav-icon"><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2" fill="none"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+          <span>Calibration</span>
+        </button>
+      </nav>
+    </aside>
+
+    <div class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <svg viewBox="0 0 24 24" class="shield-icon"><path d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg>
+          <span>Powered by <strong>Iverto Vision Platform</strong></span>
+        </div>
+        <div class="topbar-right">
+          {% if gpu_name %}
+          <span class="pill pill-gpu">
+            <svg viewBox="0 0 24 24" class="pill-icon"><path d="M13 2 4 14h6l-1 8 9-12h-6l1-8z" fill="currentColor"/></svg>
+            {{ gpu_name }} · CUDA Active
+          </span>
+          {% endif %}
+          <span class="pill pill-feed" data-role="feed-pill"><i class="feed-dot"></i><span data-role="feed-text">Monitor idle</span></span>
+        </div>
+      </header>
+
+      <main class="content">
+
+        <!-- ================= Overview ================= -->
+        <section class="page" data-page="overview">
+          <h1>Oven Exit Overview</h1>
+          <p class="subtitle">Today's disc-pad batches at the oven exit: pads counted, pads pulled to the conveyor, and batches where the pulling unit left a pad behind (NC).</p>
+
+          <div class="stat-grid stat-grid-4">
+            <div class="stat-card">
+              <div class="stat-label"><svg viewBox="0 0 24 24" class="stat-icon"><rect x="3" y="7" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M3 11h18M8 7V4h8v3" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>BATCHES TODAY</div>
+              <div class="stat-value" data-role="ov-batches">—</div>
+              <div class="stat-sub" data-role="ov-batches-sub"></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label"><svg viewBox="0 0 24 24" class="stat-icon"><circle cx="8" cy="12" r="3" stroke="currentColor" stroke-width="1.6" fill="none"/><circle cx="16" cy="12" r="3" stroke="currentColor" stroke-width="1.6" fill="none"/></svg>PADS COUNTED</div>
+              <div class="stat-value" data-role="ov-pads">—</div>
+              <div class="stat-sub">entering the pull zone</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label"><svg viewBox="0 0 24 24" class="stat-icon"><path d="M20 12H6M11 7l-5 5 5 5" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>PADS PULLED</div>
+              <div class="stat-value" data-role="ov-pulled">—</div>
+              <div class="stat-sub" data-role="ov-pulled-sub"></div>
+            </div>
+            <div class="stat-card stat-card-nc">
+              <div class="stat-label"><svg viewBox="0 0 24 24" class="stat-icon"><path d="M12 3 2 20h20L12 3z" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/><path d="M12 10v4M12 17v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>NC BATCHES</div>
+              <div class="stat-value" data-role="ov-nc">—</div>
+              <div class="stat-sub" data-role="ov-nc-sub"></div>
+            </div>
+          </div>
+
+          <div class="chart-panels">
+            <div class="chart-card">
+              <div class="chart-head">
+                <h3>Batches — Hourly OK / NC <span class="chart-head-sub">Today</span></h3>
+                <div class="chart-legend">
+                  <span class="legend-item"><i class="legend-dot legend-dot-success"></i>OK</span>
+                  <span class="legend-item"><i class="legend-dot legend-dot-fail"></i>NC</span>
+                </div>
+              </div>
+              <div class="chart-body" data-role="ov-chart-batches"></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-head">
+                <h3>Pads — Hourly Pulled / Left Behind <span class="chart-head-sub">Today</span></h3>
+                <div class="chart-legend">
+                  <span class="legend-item"><i class="legend-dot legend-dot-success"></i>Pulled</span>
+                  <span class="legend-item"><i class="legend-dot legend-dot-fail"></i>Left behind</span>
+                </div>
+              </div>
+              <div class="chart-body" data-role="ov-chart-pads"></div>
+            </div>
+          </div>
+
+          <div class="table-card">
+            <div class="chart-head"><h3>Recent NC batches <span class="chart-head-sub">latest 8, any day</span></h3></div>
+            <div data-role="ov-nc-table"></div>
+          </div>
+        </section>
+
+        <!-- ================= Live Monitoring ================= -->
+        <section class="page" data-page="live" hidden>
+          <h1>Live Monitoring</h1>
+          <p class="subtitle">Press <strong>Start</strong> to run on the line camera with the ROI saved in <strong>Calibration</strong>. Pad boxes are green while pads arrive and red during the post-pull check. Any pad still inside the ROI after the pulling unit leaves raises an NC.</p>
+
+          <div class="live-layout">
+            <section class="station-card">
+              <div class="station-header">
+                <h2>Oven Exit <span class="station-sub">Disc Pad Pull Verification</span></h2>
+                <span class="status-badge" data-role="status-badge">Idle</span>
+              </div>
+
+              <div class="setup-strip" data-role="setup-strip">
+                <span class="setup-item" data-role="setup-camera"><b>Camera</b> <span>—</span></span>
+                <span class="setup-item" data-role="setup-roi"><b>ROI</b> <span>—</span></span>
+                <span class="setup-item" data-role="setup-model"><b>Model</b> <span>—</span></span>
+                <button type="button" class="link-btn" data-role="goto-calibration">Change in Calibration →</button>
+              </div>
+              <div class="station-controls">
+                <button type="button" class="btn btn-primary" data-role="start-btn">Start</button>
+                <button type="button" class="btn" data-role="stop-btn" disabled>Stop</button>
+                <span class="station-process-text" data-role="process-text"></span>
+              </div>
+              <div class="error-text" data-role="live-error" hidden></div>
+
+              <div class="video-frame">
+                <img data-role="stream" alt="annotated live stream" hidden>
+                <div class="video-placeholder" data-role="placeholder">
+                  <svg viewBox="0 0 24 24" class="placeholder-icon"><rect x="2" y="5" width="14" height="14" rx="2" stroke="currentColor" stroke-width="1.6" fill="none"/><path d="M16 10l6-3v10l-6-3" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linejoin="round"/></svg>
+                  <span>Press Start to begin monitoring…</span>
+                </div>
+                <div class="live-badge" data-role="live-badge" hidden>
+                  <span class="live-dot"></span><span>LIVE</span>
+                </div>
+              </div>
+            </section>
+
+            <aside class="live-side">
+              <div class="side-card">
+                <h3>Current state</h3>
+                <div class="state-chip" data-role="mon-state">—</div>
+                <dl class="kv">
+                  <dt>Pads in ROI</dt><dd data-role="mon-pads-roi">—</dd>
+                  <dt>Puller score</dt><dd data-role="mon-puller">—</dd>
+                  <dt>Processing</dt><dd data-role="mon-fps">—</dd>
+                </dl>
+              </div>
+              <div class="side-card">
+                <h3>This run</h3>
+                <dl class="kv kv-big">
+                  <dt>Batches</dt><dd data-role="run-batches">0</dd>
+                  <dt>Pads</dt><dd data-role="run-pads">0</dd>
+                  <dt>Pulled</dt><dd data-role="run-pulled">0</dd>
+                  <dt>NC</dt><dd data-role="run-nc" class="nc-num">0</dd>
+                </dl>
+              </div>
+              <div class="side-card side-card-grow">
+                <h3>Event log</h3>
+                <ol class="event-log" data-role="event-log"><li class="event-empty">No events yet.</li></ol>
+              </div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- ================= Analytics ================= -->
+        <section class="page" data-page="analytics" hidden>
+          <h1>Analytics</h1>
+          <p class="subtitle">Filter batch outcomes by day, week, month, or a custom date range. Download the batch list as CSV.</p>
+
+          <div class="filter-bar">
+            <div class="segmented" data-role="range-select">
+              <button type="button" class="segmented-btn active" data-range="day">Day</button>
+              <button type="button" class="segmented-btn" data-range="week">Week</button>
+              <button type="button" class="segmented-btn" data-range="month">Month</button>
+              <button type="button" class="segmented-btn" data-range="custom">Custom range</button>
+            </div>
+            <div class="filter-controls">
+              <label class="filter-field" data-role="field-date"><span>Date</span><input type="date" data-role="input-date"></label>
+              <label class="filter-field" data-role="field-month" hidden><span>Month</span><input type="month" data-role="input-month"></label>
+              <label class="filter-field" data-role="field-from" hidden><span>From</span><input type="date" data-role="input-from"></label>
+              <label class="filter-field" data-role="field-to" hidden><span>To</span><input type="date" data-role="input-to"></label>
+              <div class="segmented segmented-sm" data-role="mode-select" hidden>
+                <button type="button" class="segmented-btn active" data-mode="daily">Day-wise</button>
+                <button type="button" class="segmented-btn" data-mode="hourly_avg">Avg hour-wise</button>
+              </div>
+            </div>
+            <a class="btn filter-download" data-role="csv-link" href="#">Download CSV</a>
+          </div>
+
+          <div class="error-text" data-role="analytics-error" hidden></div>
+
+          <div class="stat-grid stat-grid-4">
+            <div class="stat-card"><div class="stat-label">BATCHES</div><div class="stat-value" data-role="an-batches">—</div><div class="stat-sub" data-role="an-batches-sub"></div></div>
+            <div class="stat-card"><div class="stat-label">PADS COUNTED</div><div class="stat-value" data-role="an-pads">—</div></div>
+            <div class="stat-card"><div class="stat-label">PADS PULLED</div><div class="stat-value" data-role="an-pulled">—</div><div class="stat-sub" data-role="an-pulled-sub"></div></div>
+            <div class="stat-card stat-card-nc"><div class="stat-label">NC BATCHES</div><div class="stat-value" data-role="an-nc">—</div><div class="stat-sub" data-role="an-nc-sub"></div></div>
+          </div>
+
+          <div class="chart-panels">
+            <div class="chart-card">
+              <div class="chart-head">
+                <h3>Batches — OK / NC</h3>
+                <div class="chart-legend">
+                  <span class="legend-item"><i class="legend-dot legend-dot-success"></i>OK</span>
+                  <span class="legend-item"><i class="legend-dot legend-dot-fail"></i>NC</span>
+                </div>
+              </div>
+              <div class="chart-body" data-role="an-chart-batches"></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-head">
+                <h3>Pads — Pulled / Left Behind</h3>
+                <div class="chart-legend">
+                  <span class="legend-item"><i class="legend-dot legend-dot-success"></i>Pulled</span>
+                  <span class="legend-item"><i class="legend-dot legend-dot-fail"></i>Left behind</span>
+                </div>
+              </div>
+              <div class="chart-body" data-role="an-chart-pads"></div>
+            </div>
+          </div>
+
+          <div class="table-card">
+            <div class="chart-head"><h3>Batches <span class="chart-head-sub" data-role="an-table-sub"></span></h3></div>
+            <div data-role="an-table"></div>
+          </div>
+        </section>
+
+        <!-- ================= Calibration ================= -->
+        <section class="page" data-page="calibration" hidden>
+          <h1>Calibration</h1>
+          <p class="subtitle">Assign the line camera, then capture a frame and draw the ROI: the area of the belt where pads are counted and checked after each pull. Start on the Live Monitoring page always uses what is saved here.</p>
+
+          <div class="calib-layout">
+            <div class="calib-main">
+              <div class="calib-cam-head">
+                <h3 class="calib-title">Line camera <span class="chart-head-sub" data-role="calib-cam-label">not assigned</span></h3>
+                <button type="button" class="btn" data-role="reassign-btn" hidden>Change camera</button>
+              </div>
+
+              <div class="device-assign-panel" data-role="device-assign-panel" hidden>
+                <p data-role="device-assign-message">No camera assigned yet.</p>
+                <button type="button" class="btn" data-role="detect-cameras-btn">Detect cameras</button>
+                <button type="button" class="btn" data-role="cancel-assign-btn" hidden>Cancel</button>
+                <div class="device-grid" data-role="device-grid"></div>
+              </div>
+
+              <div class="calib-actions">
+                <button type="button" class="btn btn-primary" data-role="capture-btn" disabled>Capture frame to draw ROI</button>
+                <button type="button" class="btn" data-role="undo-btn" hidden>Undo last corner</button>
+                <button type="button" class="btn" data-role="clear-btn" hidden>Clear</button>
+                <button type="button" class="btn" data-role="cancel-draw-btn" hidden>Back to live</button>
+                <button type="button" class="btn btn-primary" data-role="save-roi-btn" hidden disabled>Save ROI</button>
+              </div>
+              <div class="calib-step-status" data-role="calib-step-status"></div>
+              <div class="error-text" data-role="calib-error" hidden></div>
+
+              <div class="calib-preview-wrap calib-preview-wide">
+                <img data-role="calib-mjpeg-src" alt="" hidden>
+                <canvas data-role="calib-canvas" hidden></canvas>
+                <div class="video-placeholder" data-role="calib-placeholder">
+                  <span>Assign a camera to begin.</span>
+                </div>
+                <div class="live-badge" data-role="calib-mode-badge" hidden><span data-role="calib-mode-text">LIVE PREVIEW</span></div>
+              </div>
+            </div>
+
+            <div class="calib-sidebar">
+              <div class="calib-panel">
+                <h3>How to draw the ROI</h3>
+                <ol class="calib-steps">
+                  <li>Wait until the belt is visible in the live preview (ideally with a batch of pads at the sensor).</li>
+                  <li>Click <b>Capture frame to draw ROI</b>.</li>
+                  <li><b>Click</b> around the belt area to place corners. <b>Drag</b> a corner to move it, <b>right-click</b> a corner to remove it.</li>
+                  <li>Include the whole pad lane and the staging spot at the sensor. Leave out the oven shadow and the pulling unit's parking area.</li>
+                  <li>Click <b>Save ROI</b>.</li>
+                </ol>
+              </div>
+              <div class="calib-panel">
+                <h3>Saved ROI</h3>
+                <dl class="kv" data-role="roi-info">
+                  <dt>Status</dt><dd data-role="roi-status">—</dd>
+                  <dt>Corners</dt><dd data-role="roi-corners">—</dd>
+                  <dt>Saved</dt><dd data-role="roi-saved">—</dd>
+                  <dt>Camera</dt><dd data-role="roi-camera">—</dd>
+                </dl>
+                <p class="calib-hint calib-hint-gap">Shown in yellow on the live preview. Every save keeps the previous ROI in <code>roi_backups/</code> and the frame it was drawn on in <code>roi_reference.jpg</code>.</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- NC alert: shown on any page while the monitor reports an unacknowledged NC -->
+  <div class="modal-backdrop" data-role="nc-modal" hidden>
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="nc-modal-title">
+      <div class="modal-header">
+        <span class="nc-chip">NC</span>
+        <h2 id="nc-modal-title">Pad left on the belt after the pull</h2>
+      </div>
+      <p class="modal-reason" data-role="nc-reason"></p>
+      <p class="modal-pours" data-role="nc-detail"></p>
+      <img class="nc-snapshot" data-role="nc-snapshot" alt="annotated frame at the moment of the NC" hidden>
+      <p class="modal-hint">Remove the pad left on the belt before the next batch arrives, otherwise the next batch will also be counted wrong. Acknowledging only closes this alert; the NC stays in the records.</p>
+      <div class="error-text" data-role="nc-error" hidden></div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-primary" data-role="nc-ack-btn">Acknowledge</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='charts.js') }}"></script>
+  <script src="{{ url_for('static', filename='calibration.js') }}"></script>
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
