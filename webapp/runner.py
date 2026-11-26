@@ -44,29 +44,82 @@ MIN_OK_FPS = 8
 
 
 def newest_model() -> str | None:
-    """Newest runs/*/weights/best.pt, or the best.engine (TensorRT) next to it
-    if one was built from it (export_tensorrt.py) - an engine older than its
-    best.pt is stale and ignored."""
+    """Newest runs/*/weights/best.pt, or a faster export built from it:
+    best.engine (TensorRT, NVIDIA PCs; export_tensorrt.py) first, else an NCNN
+    folder (CPU / Raspberry Pi; export_ncnn.py) whose input width matches
+    Cfg.imgsz. An export older than its best.pt is stale and ignored."""
     found = sorted(glob.glob(str(PROJECT_DIR / "runs" / "**" / "weights" / "best.pt"), recursive=True),
                    key=os.path.getmtime, reverse=True)
     if not found:
         return None
     pt = Path(found[0])
+    fresh = lambda p: p.exists() and p.stat().st_mtime >= pt.stat().st_mtime
     engine = pt.with_suffix(".engine")
-    if engine.exists() and engine.stat().st_mtime >= pt.stat().st_mtime:
+    if fresh(engine):
         return str(engine)
+    for ncnn in sorted(pt.parent.glob(f"best_ncnn_model_*x{monitor.Cfg().imgsz}")):
+        if fresh(ncnn / "model.ncnn.bin"):
+            return str(ncnn)
     return str(pt)
 
 
 def model_label(path: str | None) -> str | None:
     if not path:
         return None
-    name = Path(path).parent.parent.name
-    return f"{name} (TensorRT)" if path.endswith(".engine") else name
+    p = Path(path)
+    if "_ncnn_model" in p.name:
+        return f"{p.parent.parent.name} (NCNN {p.name.rsplit('_', 1)[-1]})"
+    return f"{p.parent.parent.name} (TensorRT)" if path.endswith(".engine") else p.parent.parent.name
 
 
 class StartError(Exception):
     pass
+
+
+class LatestFrameReader:
+    """Reads the camera in its own thread and keeps only the newest frame.
+
+    The model is slower than the camera (on a Raspberry Pi ~4 fps vs 15 fps),
+    so frames have to be skipped either way. Reading straight from the camera
+    would hand the monitor the OLDEST frame in the driver's queue - up to a
+    second behind the belt. This hands it the frame that just arrived, and
+    decoding the next frame overlaps with inference on this one. In test mode
+    it also makes the video play at its real speed, the way a camera would,
+    instead of in slow motion.
+
+    read() returns (False, None) after a failed camera read, or when no new
+    frame arrives within `timeout`, so the runner's reconnect logic works as
+    before."""
+
+    def __init__(self, cap, timeout: float = 2.0):
+        self.cap, self.timeout = cap, timeout
+        self._cond = threading.Condition()
+        self._frame, self._ok, self._new, self._running = None, True, False, True
+        self._thread = threading.Thread(target=self._loop, daemon=True)
+        self._thread.start()
+
+    def _loop(self):
+        while self._running:
+            ok, frame = self.cap.read()
+            with self._cond:
+                self._ok, self._new = ok, True
+                if ok:
+                    self._frame = frame
+                self._cond.notify()
+            if not ok:
+                time.sleep(0.05)        # don't spin on a dead camera
+
+    def read(self):
+        with self._cond:
+            if not self._cond.wait_for(lambda: self._new, self.timeout):
+                return False, None
+            self._new = False
+            return (True, self._frame) if self._ok else (False, None)
+
+    def release(self):
+        self._running = False
+        self._thread.join(timeout=3)    # let an in-progress read finish first
+        self.cap.release()
 
 
 class MonitorRunner:
@@ -203,6 +256,7 @@ class MonitorRunner:
                 self._set(notice=f"Camera delivers only {fps:.1f} fps (need ~{MIN_OK_FPS}+). Check its "
                                  "resolution/format and USB port. Results may be unreliable.")
                 self._event(f"WARNING: camera delivers only {fps:.1f} fps")
+            cap = LatestFrameReader(cap)
             mon = monitor.PadPullMonitor(det, roi, fps, cfg)
             run_id = uuid.uuid4().hex
             label = f"Camera {index}" if not camera.TEST_VIDEO else f"Test video ({Path(camera.TEST_VIDEO).name})"
@@ -222,6 +276,7 @@ class MonitorRunner:
                             break
                         raise RuntimeError(f"camera {index} did not come back within "
                                            f"{RECONNECT_WINDOW_S:.0f} s - check the cable, then press Start")
+                    cap = LatestFrameReader(cap)
                     fails = 0
                     continue
                 fails = 0

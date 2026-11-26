@@ -18,3 +18,7 @@ onnx>=1.12,<1.19
 onnxslim>=0.1.59
 ml_dtypes>=0.5,<0.6       # ml_dtypes 0.6+ needs numpy 2
 onnxruntime-gpu==1.32.0     # used by the ONNX step of the export
+
+# --- NCNN export for the Raspberry Pi (optional; export_ncnn.py) ------------
+ncnn
+pnnx

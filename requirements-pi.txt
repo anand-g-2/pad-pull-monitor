@@ -1,0 +1,11 @@
+# Disc Pad Pull Monitor - Python packages for a Raspberry Pi (64-bit Raspberry Pi OS)
+# The Pi runs the NCNN model (runs/*/weights/best_ncnn_model_544x960, made on the
+# PC with export_ncnn.py). No TensorRT / CUDA here.
+#
+#   pip install -r requirements-pi.txt
+#
+# ultralytics pulls in the CPU build of PyTorch and OpenCV for ARM (aarch64).
+
+ultralytics==8.4.84        # YOLO inference (loads the NCNN model)
+ncnn                       # NCNN runtime
+flask==3.1.3               # web app

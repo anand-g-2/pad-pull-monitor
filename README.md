@@ -19,6 +19,7 @@ It runs as a **web application** with four pages: Overview, Live Monitoring, Ana
 2. [What you need](#2-what-you-need)
 3. [Setup on a new PC](#3-setup-on-a-new-pc)
 4. [Speed up with TensorRT (recommended)](#4-speed-up-with-tensorrt-recommended)
+   - [4.1 Raspberry Pi: the NCNN model](#41-raspberry-pi-the-ncnn-model)
 5. [Run the web app](#5-run-the-web-app)
 6. [Using the web app](#6-using-the-web-app)
 7. [Testing without the line camera](#7-testing-without-the-line-camera)
@@ -151,6 +152,35 @@ python export_tensorrt.py
 - If the FP16 engine ever performs worse than the `.pt` model, rebuild it in full precision: `python export_tensorrt.py --fp32`.
 - To go back to the `.pt` model, delete `best.engine`.
 
+### 4.1 Raspberry Pi: the NCNN model
+
+A Raspberry Pi has no NVIDIA GPU, so it runs the model on its CPU with **NCNN**, a runtime built for ARM boards. The NCNN model is **already in the repo** (`runs/pad_puller_v1/weights/best_ncnn_model_544x960/`). Unlike a TensorRT engine it works on any machine, so the Pi doesn't need to convert anything.
+
+To rebuild it on the PC after retraining:
+
+```
+python export_ncnn.py
+```
+
+It writes the folder above, then scores the `.pt` and NCNN models on the validation images. The input is **544x960 (16:9, like the camera)**, not a square 960x960, because a square input would spend about 40% of the work on padding.
+
+How the web app chooses: `best.engine` if present, otherwise the NCNN folder whose width matches `Cfg.imgsz` (960), otherwise `best.pt`. The Live page shows `pad_puller_v1 (NCNN 544x960)`. On this PC the engine still wins. To run NCNN on a PC, temporarily rename `best.engine`.
+
+**Faster, slightly less accurate option:** `python export_ncnn.py --imgsz 640` makes `best_ncnn_model_384x640`, about 2x faster. To use it, set `imgsz: int = 640` in `Cfg` (`monitor.py`). See [section 13](#13-validation-results) for what it costs in accuracy.
+
+**Setting up the Pi** (64-bit Raspberry Pi OS; a Pi 5 is recommended):
+
+```
+sudo apt install -y python3-venv git
+git clone https://github.com/anand-g-2/pad-pull-monitor
+cd pad-pull-monitor
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements-pi.txt
+python -m webapp.app
+```
+
+Then open `http://localhost:5050` on the Pi's monitor, and use Calibration and Live Monitoring as on the PC. Copy `bg.png` only if you need the classic detector. On Linux the camera is opened through V4L2. `start_webapp.bat` is Windows-only.
+
 ---
 
 ## 5. Run the web app
@@ -242,7 +272,7 @@ These are useful for development and offline analysis, run from the project fold
 
 | Command | What it does |
 |---|---|
-| `python monitor.py run VIDEO --model runs/pad_puller_v1/weights/best.pt --roi roi.json --out annotated.mp4 --csv batches.csv` | Runs the monitor on a video file, writes an annotated video and a CSV of batches, and prints each OK/NC. `--show` opens a preview window. `--model` also accepts a `.engine`. |
+| `python monitor.py run VIDEO --model runs/pad_puller_v1/weights/best.pt --roi roi.json --out annotated.mp4 --csv batches.csv` | Runs the monitor on a video file, writes an annotated video and a CSV of batches, and prints each OK/NC. `--show` opens a preview window. `--model` also accepts a `.engine` or an NCNN folder. |
 | `python monitor.py run VIDEO --bg bg.png --roi roi.json` | The same with the **classic** detector (no AI: dark blobs = pads), for comparison. It needs an empty-belt reference: `python monitor.py calibrate VIDEO --bg bg.png`. |
 | `python test_nc_sim.py VIDEO --model ... --roi roi.json --out nc_sim.mp4` | **Simulated NC test:** pastes a real pad onto the belt after the 2nd pull, which must produce an NC. Use it after any change to the model or settings. |
 | `python draw_roi.py VIDEO_OR_CAMERA --out roi.json` | Draws the ROI in an OpenCV window (the same file the web app writes). |
@@ -284,7 +314,7 @@ Retrain when the camera position, lighting, pad type or pulling unit changes not
    ```
    On a 4 GB GPU keep `--batch 4` (the default). Batch 8 overflows the GPU memory and becomes about 10× slower.
 6. **Validate** with `monitor.py run` on a recording and with `test_nc_sim.py`.
-7. **Rebuild TensorRT**: `python export_tensorrt.py`. The web app always uses the newest `runs/*/weights/best.pt`, or its engine if one has been built.
+7. **Rebuild the exports**: `python export_tensorrt.py` (PC) and `python export_ncnn.py` (for the Pi). The web app always uses the newest `runs/*/weights/best.pt`, or an export built from it (TensorRT first, then NCNN).
 
 ---
 
@@ -324,7 +354,9 @@ pad_pull_monitor/
 │  ├─ analytics.db          batch records            (created at runtime, not in Git)
 │  └─ snapshots/            NC snapshots             (created at runtime, not in Git)
 ├─ monitor.py               detectors + OK/NC state machine (also a CLI)
-├─ export_tensorrt.py       .pt → TensorRT engine
+├─ export_tensorrt.py       .pt → TensorRT engine (NVIDIA PCs)
+├─ export_ncnn.py           .pt → NCNN model (Raspberry Pi / CPU) + accuracy check
+├─ requirements-pi.txt      packages for the Raspberry Pi
 ├─ train.py                 YOLO training
 ├─ autolabel.py             draft labels from recordings
 ├─ review_labels.py         label review/correction tool
@@ -379,5 +411,27 @@ Monitor results on the full recordings (both `.pt` and TensorRT give identical d
 | Recording 1 | 7 batches, 35 pads, all OK |
 | Recording 2 | 6 batches, 30 pads, all OK (7th cut off by the end of the file) |
 | Simulated missed pad | NC raised for the affected batch ("1 pad left on belt after pull"), plus NC on the next batch (wrong count) |
+
+**NCNN (for the Raspberry Pi).** Scored on the 267 validation images at the monitor's thresholds (pad 0.40, puller 0.50, IoU 0.5), on the PC's CPU (i7-10750H):
+
+| Model | Pad precision | Pad recall | Puller precision | Puller recall | ms/frame (PC CPU) |
+|---|---|---|---|---|---|
+| PyTorch `.pt`, 960 | 0.958 | 0.975 | 0.991 | 0.991 | 137 |
+| **NCNN 544x960** | 0.958 | 0.975 | 0.991 | 0.991 | 140 |
+| PyTorch `.pt`, 640 | 0.946 | 0.957 | 0.991 | 0.982 | 81 |
+| NCNN 384x640 | 0.946 | 0.957 | 0.991 | 0.982 | 66 |
+
+NCNN gives exactly the same detections as PyTorch at both sizes. The 640 input misses 22 of the validation pads instead of 13; these are mostly the small, far pads. Ultralytics' own `val` (mAP) works for NCNN only with square inputs, which is why this table uses its own scoring. With the square 960x960 NCNN export, `val` gave mAP50 0.992 and mAP50-95 0.893.
+
+The monitor with NCNN 544x960 on the full recordings, at the camera's 15 fps and with frames dropped to imitate a slower processor:
+
+| Processing rate | Recording 1 | Recording 2 | Simulated missed pad |
+|---|---|---|---|
+| 15 fps | 7 OK | 6 OK | NC caught (+ count NC on the next batch) |
+| 7.5 fps | 7 OK | 6 OK | NC caught (+ count NC on the next batch) |
+| 5 fps | 7 OK | 6 OK | NC caught (+ count NC on the next batch) |
+| 3 fps | 7 OK | 6 OK | NC caught |
+
+The OK/NC logic holds down to 3 fps. **Pi speed has not been measured** (no Pi was available). A rough estimate for a Pi 5 is 120–150 ms per frame for the model alone, so about 4–6 fps for the whole monitor with the browser running on the same Pi. That is enough by the table above. A Pi 4 is roughly 3x slower and would need the 640 model. Check the fps on the Live page on the actual Pi; below about 3 fps, use the 640 model.
 
 **Not yet validated:** a real missed pull. No footage of one exists. Before relying on the system in production, record and run at least one real or staged missed pull.

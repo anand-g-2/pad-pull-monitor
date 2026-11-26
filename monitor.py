@@ -25,6 +25,7 @@ import argparse
 import csv
 import sys
 import time
+from pathlib import Path
 from collections import deque
 from dataclasses import dataclass
 
@@ -90,12 +91,19 @@ def in_roi(mask, box):
 class YoloDetector:
     def __init__(self, model_path, roi, cfg):
         from ultralytics import YOLO
-        self.model, self.roi, self.cfg = YOLO(model_path, task="detect"), roi, cfg  # .pt or TensorRT .engine
+        # .pt, TensorRT .engine, or an NCNN model folder (*_ncnn_model, for the Raspberry Pi)
+        self.model, self.roi, self.cfg = YOLO(model_path, task="detect"), roi, cfg
+        self.device, self.imgsz = None, cfg.imgsz
+        meta = Path(model_path) / "metadata.yaml"
+        if meta.exists():   # NCNN folder: fixed input shape (e.g. 544x960), CPU runtime
+            import yaml
+            self.imgsz = tuple(yaml.safe_load(meta.read_text())["imgsz"])
+            self.device = "cpu"   # without this Ultralytics would use Vulkan on a GPU PC
 
     def __call__(self, frame):
         c = self.cfg
-        r = self.model.predict(frame, imgsz=c.imgsz, conf=min(c.pad_conf, c.puller_conf_off),
-                               verbose=False)[0]
+        r = self.model.predict(frame, imgsz=self.imgsz, conf=min(c.pad_conf, c.puller_conf_off),
+                               device=self.device, verbose=False)[0]
         sx, sy = WORK_W / frame.shape[1], WORK_H / frame.shape[0]
         pads, puller, pconf = [], None, 0.0
         for (x0, y0, x1, y1), cls, conf in zip(r.boxes.xyxy.tolist(), r.boxes.cls.tolist(),
