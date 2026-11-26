@@ -243,7 +243,7 @@ Redo the calibration whenever the camera is moved, bumped or replaced. You can c
 When an NC happens, a red pop-up appears on **any** page. It shows the batch, the reason and a snapshot.
 
 1. Remove the pad left on the belt **before the next batch arrives**. Otherwise the next batch is also counted wrong (6 pads → NC).
-2. Click **Acknowledge**. This only closes the pop-up; the NC stays in the records.
+2. The pop-up closes by itself after 5 seconds (click **OK** to close it sooner). The NC stays in the records.
 
 ### Overview and Analytics
 

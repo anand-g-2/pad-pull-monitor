@@ -297,16 +297,48 @@
   stopBtn.addEventListener("click", () => control("stop"));
 
   // ============================== NC alert ==============================
+  // The alert closes itself after NC_AUTO_CLOSE_S seconds (acknowledging the NC
+  // exactly as the button would); the button just closes it sooner.
+  const NC_AUTO_CLOSE_S = 5;
   const ncModal = role("nc-modal");
+  const ncAckBtn = role("nc-ack-btn");
   let shownNcKey = null;
+  let dismissedNcKey = null;   // closed on this screen; don't reopen while the ack is in flight
+  let ncTimer = null;
+
+  function stopNcCountdown() {
+    if (ncTimer) clearInterval(ncTimer);
+    ncTimer = null;
+  }
+
+  function startNcCountdown() {
+    stopNcCountdown();
+    let left = NC_AUTO_CLOSE_S;
+    ncAckBtn.textContent = `OK (${left})`;
+    ncTimer = setInterval(() => {
+      left -= 1;
+      if (left > 0) {
+        ncAckBtn.textContent = `OK (${left})`;
+      } else {
+        stopNcCountdown();
+        acknowledgeNc();
+      }
+    }, 1000);
+  }
+
+  function hideNcModal() {
+    stopNcCountdown();
+    ncModal.hidden = true;
+  }
 
   function updateNcModal(s) {
     const nc = s.last_nc;
     if (!nc || nc.acknowledged) {
-      ncModal.hidden = true;
+      hideNcModal();
       return;
     }
     const key = `${s.started_at}/${nc.batch}`;
+    if (key === dismissedNcKey) return;
     if (key === shownNcKey && !ncModal.hidden) return;
     shownNcKey = key;
     role("nc-reason").textContent = `Batch ${nc.batch} at ${nc.time}: ${nc.reason}.`;
@@ -325,24 +357,27 @@
     }
     role("nc-error").hidden = true;
     ncModal.hidden = false;
-    role("nc-ack-btn").focus();
+    ncAckBtn.focus();
+    startNcCountdown();
   }
 
-  role("nc-ack-btn").addEventListener("click", async () => {
+  async function acknowledgeNc() {
     const nc = status.last_nc;
-    if (!nc) return (ncModal.hidden = true);
+    hideNcModal();
+    if (!nc) return;
+    dismissedNcKey = `${status.started_at}/${nc.batch}`;
     try {
       await getJSON("/api/monitor/ack", {
         method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ batch: nc.batch }),
       });
-      ncModal.hidden = true;
-      pollStatus();
     } catch (err) {
-      const e = role("nc-error");
-      e.textContent = err.message;
-      e.hidden = false;
+      // the alert stays closed on this screen; the NC is still in the records
+      console.error("NC acknowledge failed", err);
     }
-  });
+    pollStatus();
+  }
+
+  ncAckBtn.addEventListener("click", acknowledgeNc);
 
   // ============================== Analytics ==============================
   function todayISO() {
